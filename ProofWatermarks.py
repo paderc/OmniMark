@@ -1,57 +1,62 @@
 """
-Methods
-  "proof"  stacks the layers below
-  "mark"   the Python twin of applyWatermark() in watermark.ts
+NAME
+       ProofWatermarks - layered visible watermarks (event-photo proofs and stock-photo styles)
 
-Layers of "proof" (choose with `layers`, default all)
-  pattern  a structure across the image: one or more of PATTERNS
-  banner   the first text line, centred along the top edge
-  block    all text lines centred in the frame, later lines a bit smaller
-  caption  a solid bar near the bottom with the lines joined by " - "
+SYNOPSIS
+       python ProofWatermarks.py <input> <output> [--params <json>] [--method <name>] [--mask <path>] [--logo <path>]
 
-Patterns (choose with `pattern`; `count` sets the density) and the kind of
-watermark each one is modelled on
-  cross    an X per cell, cut away around text     event-photo proofs
-  lattice  diamond mesh of thin lines, small marks stock libraries (Shutterstock-style)
-  rows     diagonal rows of repeated text          stock libraries (iStock/Dreamstime-style)
-  band     translucent strip behind the centre text  stock previews (Getty/Alamy-style)
-  waves    wavy lines with random phases           guilloche on banknotes and certificates
-  frame    border strip with repeated text         portrait and school photo proofs
+DESCRIPTION
+       The file provides two CLI methods and three Python API functions to apply 
+       semi-transparent watermarks. It is driven by a JSON parameter schema
+       (`WatermarkParams`), shared with the TypeScript `watermark.ts`.
 
-Holes
-  `holes` (0-1) punches little holes inside the strokes of the finished
-  watermark, removing about that fraction of the stroke area. The holes are
-  random for every mark and every image, so attacks that rebuild the
-  watermark from a template, or average many copies of it, no longer match
-  the real one exactly. Pass `seed` to make them reproducible.
+METHODS (--method)
+       proof   Layered watermark: pattern + banner + block + caption.
+       mark    Single or tiled mark (text or logo). Closest to TS renderer.
 
-Parameters
-  Same keys, defaults, ranges, string coercion and error messages as
-  normalizeParams() in watermark.ts, so one JSON object drives both sides.
-  snake_case aliases (custom_position, pattern_offset) are accepted too.
-  Unknown keys are ignored on both sides, which leaves room for these
-  Python-only extras (the TS side skips them):
-    layers   "pattern,block" or a list; "cross" still means "pattern"
-    pattern  one or more of PATTERNS, default "cross"
-    count    1-50, density: cross = X's per side, lattice = diamonds across
-             the short side, rows/waves/frame = 2 x count rows/lines/repeats,
-             band = number of bands
-    holes    0-1, default 0
-    seed     makes the waves and holes reproducible
+OPTIONS (--params JSON keys)
+       text              String. The watermark text (e.g., "ACME\n© 2025").
+       opacity           Float 0..1. Global transparency. [Default: 0.5]
+       scale             Float 0.05..1. Sizes the watermark. [Default: 0.25]
+       color             Hex string (e.g., "#ffffff").
+       angle             Float -180..180. Clockwise rotation. [Default: 0]
+       mode              "single" | "tile". [Default: "single"], tile only works on `--method mark` (and the `block` layer of `proof`).
+       position          "top-left", "center", "bottom-right", etc. [Default: "bottom-right"]
+       margin            Int. Distance from edge in pixels. [Default: 20]
+       shadow            Boolean. Contrast outline. [Default: true]
+       spacing           Float 0..5. Gap between tiles. [Default: 0.6]
+       stagger           Boolean. Offset alternating rows in tile mode. [Default: true]
 
-  How the TS parameters map onto "proof"
-    text      "\n" splits lines: block = all lines; banner, rows, lattice
-              and frame use the first; caption joins them with " - "
-    logo      replaces the text, as in TS: it becomes the centre mark
-    scale     sizes every layer through PROOF; 0.25 gives the reference layout
-    opacity   everything (1.0 for the solid look of the reference photo)
-    color     text and lines; bands and bars use the contrasting colour
-    shadow    contrasting outline on text and lines, border on the caption
-    angle     the centre block, and the direction of `rows`
-    mode, spacing, stagger, patternOffset, customPosition   the centre block
-    position  "mark" only
-    margin    distance of the X, banner, caption and frame from the edges
-"""
+EXTRAS (Supported in `proof` method only)
+       layers            String or list. Any combo of: "pattern", "banner", "block", "caption".
+                         [Default: all]
+       pattern           String. "cross", "lattice", "rows", "band", "waves", "frame". 
+                         [Default: "cross"]
+       count             Int 1..50. Density of the pattern. [Default: varies by pattern]
+       holes             Float 0..1. Punches holes in the strokes to defeat template attacks.
+       seed              Int 0 to 4294967295. Makes holes and waves reproducible. 
+                         [Default: random]
+       logo              PIL.Image. Replaces the text in the `block` layer. 
+                         (Must be passed via Python API or the --logo CLI flag)
+
+CLI EXAMPLES
+       # Basic text watermark (layered proof style)
+       $ python ProofWatermarks.py in.jpg out.png --params '{"text":"ACME"}'
+
+       # Text mark, bottom right (sharp/TS style)
+       $ python ProofWatermarks.py in.jpg out.png --method mark --params '{"text":"© ACME","position":"bottom-right"}'
+
+       # Event proof style (X pattern + text + caption bar)
+       $ python ProofWatermarks.py in.jpg out.png --params '{"text":"ACME","layers":"pattern,block,caption","count":1,"opacity":1.0}'
+
+       # Anti-template holes
+       $ python ProofWatermarks.py in.jpg out.png --params '{"text":"ACME","holes":0.15,"seed":42}'
+
+       # Save the watermark mask
+       $ python ProofWatermarks.py in.jpg out.png --params '{"text":"ACME"}' --mask out_mask.png
+
+       # Using a logo via CLI (requires the --logo flag patch)
+       $ python ProofWatermarks.py in.jpg out.png --logo brand.png --params '{"text":"ignored","layers":"block"}'
 
 from __future__ import annotations
 
@@ -855,7 +860,11 @@ if __name__ == "__main__":
     ap.add_argument("--params", default="{}", help='WatermarkParams as JSON, e.g. \'{"pattern": "lattice"}\'')
     ap.add_argument("--method", default="proof", choices=sorted(METHODS))
     ap.add_argument("--mask", help="also save the watermark mask as PNG")
+    ap.add_argument("--logo", help="Path to a logo image")
+    
     args = ap.parse_args()
+    if args.logo:
+        params["logo"] = open(args.logo, "rb").read()
     result = apply_watermark(args.input, json.loads(args.params), args.method)
     with open(args.output, "wb") as fh:
         fh.write(result["buffer"])
