@@ -39,24 +39,35 @@ EXTRAS (Supported in `proof` method only)
        logo              PIL.Image. Replaces the text in the `block` layer. 
                          (Must be passed via Python API or the --logo CLI flag)
 
-CLI EXAMPLES
+QUOTING (Windows PowerShell)
+       On PowerShell 5.1, inline JSON on the command line needs two things:
+         1. Prefix the params argument with `--%` so PowerShell stops parsing.
+         2. Escape every inner quote as \" (the CRT un-escapes it before JSON.parse).
+       Without this, PowerShell splits the argument at the first space inside
+       the JSON string (e.g. between "©" and "2025") and Python's argparse
+       reports "unrecognized arguments: ...".
+       Use `python` (direct), not `py -3.14`: the py launcher re-assembles
+       the command line and drops the \" escapes.
+       For anything non-trivial, write the params to a .json file instead.
+
+CLI EXAMPLES (PowerShell 5.1)
        # Basic text watermark (layered proof style)
-       $ python ProofWatermarks.py in.jpg out.png --params '{"text":"ACME"}'
+       PS> python ProofWatermarks.py in.jpg out.png --% --params "{\"text\":\"ACME\"}"
 
        # Text mark, bottom right (sharp/TS style)
-       $ python ProofWatermarks.py in.jpg out.png --method mark --params '{"text":"© ACME","position":"bottom-right"}'
+       PS> python ProofWatermarks.py in.jpg out.png --method mark --% --params "{\"text\":\"© ACME\",\"position\":\"bottom-right\"}"
 
        # Event proof style (X pattern + text + caption bar)
-       $ python ProofWatermarks.py in.jpg out.png --params '{"text":"ACME","layers":"pattern,block,caption","count":1,"opacity":1.0}'
+       PS> python ProofWatermarks.py in.jpg out.png --% --params "{\"text\":\"ACME\",\"layers\":\"pattern,block,caption\",\"count\":1,\"opacity\":1.0}"
 
        # Anti-template holes
-       $ python ProofWatermarks.py in.jpg out.png --params '{"text":"ACME","holes":0.15,"seed":42}'
+       PS> python ProofWatermarks.py in.jpg out.png --% --params "{\"text\":\"ACME\",\"holes\":0.15,\"seed\":42}"
 
        # Save the watermark mask
-       $ python ProofWatermarks.py in.jpg out.png --params '{"text":"ACME"}' --mask out_mask.png
+       PS> python ProofWatermarks.py in.jpg out.png --% --params "{\"text\":\"ACME\"}" --mask out_mask.png
 
-       # Using a logo via CLI (requires the --logo flag patch)
-       $ python ProofWatermarks.py in.jpg out.png --logo brand.png --params '{"text":"ignored","layers":"block"}'
+       # Using a logo via CLI
+       PS> python ProofWatermarks.py in.jpg out.png --logo brand.png --% --params "{\"text\":\"ignored\",\"layers\":\"block\"}"
 """
 from __future__ import annotations
 
@@ -855,12 +866,12 @@ if __name__ == "__main__":
     import argparse
 
     ap = argparse.ArgumentParser(description="Apply a proof- or stock-style watermark.")
-    ap.add_argument("input")
-    ap.add_argument("output")
     ap.add_argument("--params", default="{}", help='WatermarkParams as JSON, e.g. \'{"pattern": "lattice"}\'')
     ap.add_argument("--method", default="proof", choices=sorted(METHODS))
     ap.add_argument("--mask", help="also save the watermark mask as PNG")
     ap.add_argument("--logo", help="Path to a logo image")
+    ap.add_argument("input")
+    ap.add_argument("output")
     
     args = ap.parse_args()
     if args.logo:
