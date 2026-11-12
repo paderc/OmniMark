@@ -28,11 +28,11 @@ import numpy as np
 from matplotlib.widgets import Button, CheckButtons, RadioButtons, Slider, TextBox
 from PIL import Image
 
-from VisibleWatermarking import Watermarking as wm
-from VisibleWatermarking import Measurers as ms
-from VisibleWatermarking import Attack as atk
-from VisibleWatermarking import ProofWatermarks as pwm
-from VisibleWatermarking import ColorUtils
+from OmniMark import Watermarking as wm
+from OmniMark import Measurers as ms
+from OmniMark import Attack as atk
+from OmniMark import ProofWatermarks as pwm
+from OmniMark import ColorUtils
 
 PREVIEW_SIDE = 900
 MIN_FRAME_MS = 60

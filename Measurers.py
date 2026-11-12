@@ -1,6 +1,6 @@
 import numpy as np
 import math
-from VisibleWatermarking import ColorUtils
+from OmniMark import ColorUtils
 from cv2 import GaussianBlur
 
 def mse(a, b):

@@ -57,7 +57,7 @@ CLI EXAMPLES
 
        # Using a logo via CLI (requires the --logo flag patch)
        $ python ProofWatermarks.py in.jpg out.png --logo brand.png --params '{"text":"ignored","layers":"block"}'
-
+"""
 from __future__ import annotations
 
 import io

@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 import torch
 from PIL import Image
-from VisibleWatermarking import ColorUtils
+from OmniMark import ColorUtils
 
 from simple_lama_inpainting import SimpleLama
 
